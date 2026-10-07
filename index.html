@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Projetos Quadrophenia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d0d0f; --col:#16161a; --card:#1e1e24; --line:#2a2a31;
+    --txt:#f2efe9; --sub:#9a978f; --muted:#5f5d58;
+    --f1:#8a8fa3; --f2:#d9a441; --f3:#d8613c; --f4:#5fb08a; --f5:#7d8cc4;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--txt);font-family:Inter,system-ui,sans-serif;overflow:hidden}
+  .wrap{height:100vh;display:flex;flex-direction:column;padding:2.2vw 2.4vw 1.6vw}
+  header{display:flex;align-items:flex-end;justify-content:space-between;padding-bottom:1.2vw;border-bottom:1px solid var(--line);margin-bottom:1.4vw}
+  .marca{font-family:'Bebas Neue',sans-serif;font-size:3.4vw;letter-spacing:.06em;line-height:.9}
+  .marca span{color:var(--sub)}
+  .relogio{text-align:right}
+  .hora{font-family:'Bebas Neue',sans-serif;font-size:3.4vw;line-height:.9;letter-spacing:.04em}
+  .data{font-size:.95vw;color:var(--sub);text-transform:capitalize;margin-top:.3vw}
+  .board{flex:1;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1.1vw;min-height:0}
+  .coluna{background:var(--col);border-radius:.7vw;padding:1vw .9vw;display:flex;flex-direction:column;min-height:0;border-top:.3vw solid var(--cor)}
+  .coluna h2{font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:1.5vw;letter-spacing:.04em;display:flex;justify-content:space-between;align-items:baseline;gap:.6vw;margin-bottom:.8vw;white-space:nowrap}
+  .coluna h2 span{overflow:hidden;text-overflow:ellipsis}
+  .coluna h2 b{font-weight:400;color:var(--cor);font-size:1.9vw;flex-shrink:0}
+  .cards{--s:1;flex:1;display:flex;flex-direction:column;gap:calc(var(--s)*.55vw);min-height:0;overflow:hidden}
+  .card{background:var(--card);border-radius:.45vw;padding:calc(var(--s)*.65vw) .75vw;border-left:.2vw solid var(--cor);flex-shrink:0}
+  .nome{font-size:calc(var(--s)*1.05vw);font-weight:600;line-height:1.2}
+  .meta{font-size:calc(var(--s)*.78vw);color:var(--sub);margin-top:.2vw}
+  .marco{font-size:calc(var(--s)*.78vw);color:var(--txt);opacity:.85;margin-top:calc(var(--s)*.35vw);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .marco::before{content:'→ ';color:var(--cor)}
+  .vazio{font-size:.85vw;color:var(--muted)}
+  footer{display:flex;justify-content:space-between;font-size:.75vw;color:var(--muted);padding-top:.9vw}
+  .erro{color:#e57373}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="marca">Quadrophenia Films <span>· Projetos</span></div>
+    <div class="relogio"><div class="hora" id="hora">--:--</div><div class="data" id="data"></div></div>
+  </header>
+  <main class="board" id="board"></main>
+  <footer><span id="total"></span><span id="status">Carregando…</span></footer>
+</div>
+
+<script>
+  const FASES = [
+    { id:'1', nome:'Negociação',               cor:'var(--f1)' },
+    { id:'2', nome:'Desenv. e captação',       cor:'var(--f2)' },
+    { id:'3', nome:'Pré, produção e pós',      cor:'var(--f3)' },
+    { id:'4', nome:'Lançamento e festivais',   cor:'var(--f4)' },
+    { id:'5', nome:'Finalizado',               cor:'var(--f5)' }
+  ];
+  const ATUALIZAR_MIN = 5;
+
+  function esc(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function curto(seg){
+    const m = {'doc ou factual':'Doc','foto e exposição':'Foto/Expo','videogame':'Game'};
+    return m[String(seg).toLowerCase()] || seg;
+  }
+
+  function render(res){
+    const board = document.getElementById('board');
+    board.innerHTML = FASES.map(f => {
+      const itens = res.projetos.filter(p => p.fase === f.id);
+      const cards = itens.length ? itens.map(p => `
+        <div class="card">
+          <div class="nome">${esc(p.nome)}</div>
+          <div class="meta">${esc([curto(p.segmento), p.executivo].filter(x => x && x !== '-').join(' · '))}</div>
+          ${p.marco && p.marco !== '-' ? `<div class="marco">${esc(p.marco)}</div>` : ''}
+        </div>`).join('') : '<div class="vazio">Nenhum projeto nesta fase</div>';
+      return `<section class="coluna" style="--cor:${f.cor}">
+        <h2><span>${f.nome}</span><b>${itens.length}</b></h2>
+        <div class="cards">${cards}</div>
+      </section>`;
+    }).join('');
+
+    ajustar();
+    document.getElementById('total').textContent = res.projetos.length + ' projetos ativos';
+    const t = new Date(res.atualizado);
+    document.getElementById('status').textContent = 'Atualizado às ' + t.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }
+
+  // Encolhe os cards de cada coluna até tudo caber na altura da tela
+  function ajustar(){
+    document.querySelectorAll('.cards').forEach(c => {
+      let s = 1;
+      c.style.setProperty('--s', s);
+      while (c.scrollHeight > c.clientHeight + 1 && s > 0.55) {
+        s = Math.round((s - 0.03) * 100) / 100;
+        c.style.setProperty('--s', s);
+      }
+    });
+  }
+  window.addEventListener('resize', ajustar);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajustar);
+
+  function falhou(e){
+    const s = document.getElementById('status');
+    s.textContent = 'Sem conexão com a planilha. Tentando de novo em ' + ATUALIZAR_MIN + ' min';
+    s.className = 'erro';
+  }
+
+  // URL /exec da implantação do Apps Script (a mesma que está hoje no Zoom)
+  const API = 'https://script.google.com/macros/s/AKfycbwv9VLWH1IDBEJBnn2ZtQ_ViXZJ_LQjOWfkElFsuykHK_8ljU0ouROUrgJ3UMxnxboa/exec';
+
+  function carregar(){
+    fetch(API + '?formato=json&t=' + Date.now())
+      .then(r => r.json())
+      .then(r => { document.getElementById('status').className=''; render(r); })
+      .catch(falhou);
+  }
+
+  function relogio(){
+    const d = new Date();
+    document.getElementById('hora').textContent = d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('data').textContent = d.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
+  }
+
+  relogio(); setInterval(relogio, 15000);
+  carregar(); setInterval(carregar, ATUALIZAR_MIN * 60000);
+  setTimeout(() => location.reload(), 6 * 3600000);
+</script>
+</body>
+</html>
